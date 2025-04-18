@@ -1,10 +1,11 @@
 import { NextRequest, NextResponse } from "next/server";
-import { auth } from "@/lib/auth";
+import { getServerSession } from "next-auth";
+import { authConfig } from "@/lib/auth";
 import { db } from "@/lib/db";
 import { OpenAI } from "openai";
 import { Anthropic } from "@anthropic-ai/sdk";
 import { getModelById } from "@/lib/ai/models";
-import { GoogleGenerativeAI } from "@google/generative-ai";
+import { GoogleGenAI } from "@google/genai";
 
 // NodeJSランタイムを使用
 export const runtime = 'nodejs';
@@ -17,12 +18,13 @@ const anthropic = new Anthropic({
   apiKey: process.env.ANTHROPIC_API_KEY || "",
 });
 
-const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY || "");
+// GoogleGenAI APIの初期化
+const genAI = new GoogleGenAI({ apiKey: process.env.GEMINI_API_KEY });
 
 interface RouteParams {
-  params: Promise<{
+  params: {
     id: string;
-  }>
+  }
 }
 
 // メッセージの型定義
@@ -39,12 +41,12 @@ export async function POST(
   { params }: RouteParams
 ) {
   try {
-    const session = await auth();
+    const session = await getServerSession(authConfig);
     if (!session?.user) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
 
-    const chatId = await params.then(p => p.id);
+    const chatId = params.id;
     const { content, model: modelId } = await req.json();
 
     // チャットセッションの存在と所有権を確認
@@ -95,25 +97,21 @@ export async function POST(
     // AIプロバイダーに応じた処理
     if (modelInfo.provider === "google") {
       try {
-        // Gemini APIを使用（バージョン0.1.3用）
-        const model = genAI.getGenerativeModel({ model: modelInfo.modelName });
+        if (!genAI) {
+          throw new Error("Google Gemini APIが初期化されていません");
+        }
         
-        // 会話履歴を構築
-        const chatHistory = previousMessages.map((msg: Message) => ({
-          role: msg.role === "user" ? "user" : "model",
-          parts: [{ text: msg.content }]
-        }));
-        
-        // チャットセッションを作成
-        const chat = model.startChat({
-          history: chatHistory.slice(0, -1), // 最新のユーザーメッセージを除外
+        // 新しいGemini SDKの使用方法に合わせて修正
+        const response = await genAI.models.generateContent({
+          model: modelInfo.modelName,
+          contents: previousMessages.map(msg => ({
+            role: msg.role === "user" ? "user" : "model",
+            parts: [{ text: msg.content }]
+          })),
         });
         
-        // 最新のユーザーメッセージを送信（バージョン0.1.3用）
-        const result = await chat.sendMessage(content);
-        
         // 応答を取得
-        aiResponse = result.response.text();
+        aiResponse = response.text ?? "応答がありませんでした。";
       } catch (error) {
         console.error("Error with Google Generative AI:", error);
         return NextResponse.json(

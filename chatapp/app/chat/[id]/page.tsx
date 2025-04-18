@@ -4,7 +4,6 @@ import { notFound, useRouter } from "next/navigation";
 import ChatInterface from "@/components/chat/ChatInterface";
 import { useEffect, useState, useCallback } from "react";
 import { useSession } from "next-auth/react";
-import { use } from "react";
 import { AIModel } from "@/lib/ai/models";
 import { JsonValue } from "@prisma/client/runtime/library";
 
@@ -29,15 +28,13 @@ interface ChatSession {
 }
 
 interface ChatPageProps {
-  params: Promise<{
+  params: {
     id: string;
-  }>;
+  };
 }
 
 export default function ChatPage({ params }: ChatPageProps) {
-  // React.useでparamsを解決
-  const resolvedParams = use(params);
-  const chatId = resolvedParams.id;
+  const chatId = params.id;
   
   const router = useRouter();
   const { data: session, status } = useSession();

@@ -57,6 +57,9 @@ export const authConfig: AuthOptions = {
           if (!passwordsMatch) return null;
         } 
 
+        // パスワードが一致しない場合はnullを返す
+        if (password !== user.passwordHash) return null;
+
         // 認証成功時のユーザー情報を返す
         return {
           id: user.id,

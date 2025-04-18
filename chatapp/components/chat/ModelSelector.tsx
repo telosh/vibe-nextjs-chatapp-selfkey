@@ -1,7 +1,7 @@
 "use client";
 
-import { useState } from "react";
-import { AIModel, aiModels } from "@/lib/ai/models";
+import { useEffect, useState } from "react";
+import { AIModel, aiModels, getModelById } from "@/lib/ai/models";
 import { FiChevronDown } from "react-icons/fi";
 
 type ModelSelectorProps = {
@@ -14,11 +14,22 @@ export default function ModelSelector({
   onModelChange,
 }: ModelSelectorProps) {
   const [isOpen, setIsOpen] = useState(false);
+  const [selectedModel, setSelectedModel] = useState<AIModel | undefined>(currentModel);
+
+  // currentModelが変更されたら内部状態も更新
+  useEffect(() => {
+    setSelectedModel(currentModel);
+  }, [currentModel]);
 
   const handleModelSelect = (modelId: string) => {
+    const model = getModelById(modelId);
+    setSelectedModel(model);
     onModelChange(modelId);
     setIsOpen(false);
   };
+
+  // 選択中のモデル名を表示（存在しない場合はデフォルトテキスト）
+  const displayModelName = selectedModel?.name || "モデル選択";
 
   return (
     <div className="relative">
@@ -27,7 +38,7 @@ export default function ModelSelector({
         className="flex items-center gap-2 px-3 py-2 rounded-md bg-gray-100 hover:bg-gray-200 dark:bg-gray-800 dark:hover:bg-gray-700 text-sm"
         onClick={() => setIsOpen(!isOpen)}
       >
-        <span>{currentModel?.name || "モデル選択"}</span>
+        <span>{displayModelName}</span>
         <FiChevronDown size={16} />
       </button>
 
@@ -38,7 +49,7 @@ export default function ModelSelector({
               <button
                 key={model.id}
                 className={`block w-full text-left px-4 py-2 text-sm ${
-                  currentModel?.id === model.id
+                  selectedModel?.id === model.id
                     ? "bg-blue-100 dark:bg-blue-900 text-blue-800 dark:text-blue-200"
                     : "text-gray-700 dark:text-gray-200 hover:bg-gray-100 dark:hover:bg-gray-700"
                 }`}
