@@ -2,9 +2,31 @@
 
 import { notFound, useRouter } from "next/navigation";
 import ChatInterface from "@/components/chat/ChatInterface";
-import { useEffect, useState } from "react";
+import { useEffect, useState, useCallback } from "react";
 import { useSession } from "next-auth/react";
 import { use } from "react";
+import { AIModel } from "@/lib/ai/models";
+import { JsonValue } from "@prisma/client/runtime/library";
+
+interface ChatSession {
+  id: string;
+  userId: string;
+  title: string;
+  model: string;
+  messages: Array<{
+    id: string;
+    chatSessionId: string;
+    role: string;
+    content: string;
+    createdAt: Date;
+    tokensUsed: number | null;
+    metadata: JsonValue;
+  }>;
+  createdAt: Date;
+  updatedAt: Date;
+  isArchived: boolean;
+  metadata: JsonValue;
+}
 
 interface ChatPageProps {
   params: Promise<{
@@ -19,25 +41,13 @@ export default function ChatPage({ params }: ChatPageProps) {
   
   const router = useRouter();
   const { data: session, status } = useSession();
-  const [chatSession, setChatSession] = useState<any>(null);
-  const [model, setModel] = useState<any>(null);
+  const [chatSession, setChatSession] = useState<ChatSession | null>(null);
+  const [model, setModel] = useState<AIModel | undefined>(undefined);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
-  useEffect(() => {
-    // 認証状態に応じた処理
-    if (status === "unauthenticated") {
-      router.push("/login");
-      return;
-    }
-    
-    if (status === "authenticated" && session?.user) {
-      fetchChatData();
-    }
-  }, [status, session, chatId]);
-
   // チャットデータの取得
-  const fetchChatData = async () => {
+  const fetchChatData = useCallback(async () => {
     try {
       setIsLoading(true);
       setError(null);
@@ -65,7 +75,14 @@ export default function ChatPage({ params }: ChatPageProps) {
         setModel({
           id: data.model,
           name: data.model,
-          provider: "unknown",
+          description: "不明なモデル",
+          provider: "google",
+          maxTokens: 0,
+          modelName: data.model,
+          tokenCostPer1K: {
+            input: 0,
+            output: 0
+          }
         });
       }
       
@@ -75,7 +92,19 @@ export default function ChatPage({ params }: ChatPageProps) {
       setIsLoading(false);
       console.error("Error fetching chat data:", err);
     }
-  };
+  }, [chatId]);
+
+  useEffect(() => {
+    // 認証状態に応じた処理
+    if (status === "unauthenticated") {
+      router.push("/login");
+      return;
+    }
+    
+    if (status === "authenticated" && session?.user) {
+      fetchChatData();
+    }
+  }, [status, session, router, fetchChatData]);
 
   // ローディング中の表示
   if (isLoading) {

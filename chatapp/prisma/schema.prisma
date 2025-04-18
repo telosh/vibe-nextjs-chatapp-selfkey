@@ -57,6 +57,7 @@ model User {
   name          String
   imageUrl      String?
   role          String        @default("user")
+  passwordHash  String?       // ハッシュ化されたパスワード（オプション）
   createdAt     DateTime      @default(now())
   updatedAt     DateTime      @updatedAt
   lastLoginAt   DateTime?

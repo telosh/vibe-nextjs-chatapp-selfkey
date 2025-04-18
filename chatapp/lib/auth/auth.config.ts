@@ -5,6 +5,7 @@ import Google from "next-auth/providers/google";
 import GitHub from "next-auth/providers/github";
 import { db } from "@/lib/db";
 import { z } from "zod";
+import bcrypt from "bcryptjs";
 
 export const authConfig: AuthOptions = {
   // @ts-expect-error - @auth/prisma-adapterとnext-authの型の互換性問題
@@ -43,15 +44,20 @@ export const authConfig: AuthOptions = {
         const { email, password } = parsedCredentials.data;
 
         // ここでユーザー認証ロジックを実装
-        // 実際のプロジェクトではパスワードのハッシュ化と検証が必要
         const user = await db.user.findUnique({
           where: { email },
         });
 
         if (!user) return null;
 
-        // ユーザーが存在するなら認証成功とする
-        // 注：実際の実装ではbcryptなどでパスワードハッシュを比較する必要があります
+        // パスワード検証
+        if (user.passwordHash) {
+          // パスワードハッシュが存在する場合はbcryptで検証
+          const passwordsMatch = await bcrypt.compare(password, user.passwordHash);
+          if (!passwordsMatch) return null;
+        } 
+
+        // 認証成功時のユーザー情報を返す
         return {
           id: user.id,
           email: user.email,
