@@ -1,4 +1,4 @@
-import { NextResponse } from "next/server";
+import { NextResponse, NextRequest } from "next/server";
 import { getServerSession } from "next-auth";
 import { authConfig } from "@/lib/auth";
 import { db } from "@/lib/db";
@@ -44,7 +44,7 @@ export async function GET() {
 }
 
 // 新しいチャットセッションを作成
-export async function POST() {
+export async function POST(req: NextRequest) {
   try {
     const session = await getServerSession(authConfig);
     if (!session?.user) {
@@ -54,12 +54,48 @@ export async function POST() {
     const userId = session.user.id;
     const defaultModel = getDefaultModel();
 
+    // リクエストボディの取得（テンプレートIDが指定されている場合）
+    const request = await req.json().catch(() => ({}));
+    const { promptTemplateId } = request;
+
+    // 基本データ
+    const chatData: {
+      userId: string;
+      title: string;
+      model: string;
+      promptTemplateId?: string;
+      systemPrompt?: string;
+    } = {
+      userId,
+      title: "新しい会話",
+      model: defaultModel.id,
+    };
+
+    // プロンプトテンプレートIDが指定されている場合
+    if (promptTemplateId) {
+      // テンプレートの存在確認
+      const template = await db.promptTemplate.findUnique({
+        where: {
+          id: promptTemplateId,
+          OR: [
+            { userId }, // 自分のテンプレート
+            { isPublic: true } // または公開テンプレート
+          ]
+        }
+      });
+
+      if (template) {
+        chatData.promptTemplateId = template.id;
+        chatData.systemPrompt = template.content; 
+        
+        // テンプレート名をタイトルの一部として使用
+        chatData.title = `${template.name} - 新しい会話`;
+      }
+    }
+
+    // チャットセッションの作成
     const newChat = await db.chatSession.create({
-      data: {
-        userId,
-        title: "新しい会話",
-        model: defaultModel.id,
-      },
+      data: chatData,
     });
 
     return NextResponse.json(newChat);

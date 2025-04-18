@@ -101,13 +101,29 @@ export async function POST(
           throw new Error("Google Gemini APIが初期化されていません");
         }
         
+        // メッセージのリストを作成
+        const messages = [];
+        
+        // システムプロンプトがあれば最初に追加
+        if (chatSession.systemPrompt) {
+          messages.push({
+            role: "model",
+            parts: [{ text: chatSession.systemPrompt }]
+          });
+        }
+        
+        // 過去のメッセージを追加
+        previousMessages.forEach(msg => {
+          messages.push({
+            role: msg.role === "user" ? "user" : "model",
+            parts: [{ text: msg.content }]
+          });
+        });
+        
         // 新しいGemini SDKの使用方法に合わせて修正
         const response = await genAI.models.generateContent({
           model: modelInfo.modelName,
-          contents: previousMessages.map(msg => ({
-            role: msg.role === "user" ? "user" : "model",
-            parts: [{ text: msg.content }]
-          })),
+          contents: messages,
         });
         
         // 応答を取得
@@ -120,20 +136,39 @@ export async function POST(
         );
       }
     } else if (modelInfo.provider === "openai") {
+      // メッセージ配列を構築
+      const messages = [];
+      
+      // システムプロンプトがあれば追加
+      if (chatSession.systemPrompt) {
+        messages.push({
+          role: "system",
+          content: chatSession.systemPrompt
+        });
+      }
+      
+      // 過去のメッセージを追加
+      previousMessages.forEach(msg => {
+        messages.push({
+          role: msg.role === "user" ? "user" : "assistant",
+          content: msg.content
+        });
+      });
+      
       const chatCompletion = await openai.chat.completions.create({
         model: modelInfo.modelName,
-        messages: previousMessages.map((msg: Message) => ({
-          role: msg.role === "user" ? "user" : "assistant",
-          content: msg.content,
-        })),
+        messages: messages,
       });
 
       aiResponse = chatCompletion.choices[0].message.content || "応答がありませんでした。";
     } else if (modelInfo.provider === "anthropic") {
+      // Anthropic用のプロンプト生成関数を使用
+      const prompt = generateAnthropicPrompt(previousMessages, chatSession.systemPrompt);
+      
       // Anthropic SDKを使用（v0.12.0）
       const response = await anthropic.completions.create({
         model: modelInfo.modelName,
-        prompt: generateAnthropicPrompt(previousMessages),
+        prompt: prompt,
         max_tokens_to_sample: 1000,
       });
 
@@ -186,13 +221,26 @@ export async function POST(
 }
 
 // Anthropic用のプロンプト生成
-function generateAnthropicPrompt(messages: Message[]): string {
-  let prompt = "\n\nHuman: ";
+function generateAnthropicPrompt(messages: Message[], systemPrompt?: string): string {
+  let prompt = "\n\n";
+  
+  // システムプロンプトがあれば追加
+  if (systemPrompt) {
+    prompt += "Human: <system>\n" + systemPrompt + "\n</system>\n\n";
+  } else {
+    prompt += "Human: ";
+  }
   
   for (let i = 0; i < messages.length; i++) {
     const message = messages[i];
     if (message.role === "user") {
-      prompt += message.content;
+      // 最初のメッセージで、かつシステムプロンプトがある場合は改行を入れない
+      if (i === 0 && systemPrompt) {
+        prompt += message.content;
+      } else {
+        // 通常のユーザーメッセージ
+        prompt += (i === 0 ? "" : "\n\nHuman: ") + message.content;
+      }
       
       // 次のメッセージがassistantの場合
       if (i + 1 < messages.length && messages[i + 1].role === "assistant") {

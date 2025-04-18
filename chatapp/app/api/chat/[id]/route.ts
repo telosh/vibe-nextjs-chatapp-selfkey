@@ -67,18 +67,20 @@ export async function PATCH(
     }
 
     const chatId = params.id;
-    const { title, model, isArchived } = await req.json();
+    const { title, model, isArchived, systemPrompt } = await req.json();
 
     // 更新するデータを準備
     const updateData: {
       title?: string;
       model?: string;
       isArchived?: boolean;
+      systemPrompt?: string;
     } = {};
     
     if (title !== undefined) updateData.title = title;
     if (model !== undefined) updateData.model = model;
     if (isArchived !== undefined) updateData.isArchived = isArchived;
+    if (systemPrompt !== undefined) updateData.systemPrompt = systemPrompt;
 
     // データが空の場合はエラー
     if (Object.keys(updateData).length === 0) {
