@@ -94,23 +94,33 @@ export async function POST(
 
     // AIプロバイダーに応じた処理
     if (modelInfo.provider === "google") {
-      // Gemini APIを使用
-      const model = genAI.getGenerativeModel({ model: modelInfo.modelName });
-      
-      // 会話履歴を構築
-      const chatHistory = previousMessages.map((msg: Message) => ({
-        role: msg.role === "user" ? "user" : "model",
-        parts: [{ text: msg.content }]
-      }));
-      
-      // チャットセッションを作成
-      const chat = model.startChat({
-        history: chatHistory.slice(0, -1), // 最新のユーザーメッセージを除外
-      });
-      
-      // 最新のユーザーメッセージを送信
-      const result = await chat.sendMessage(content);
-      aiResponse = result.response.text();
+      try {
+        // Gemini APIを使用（バージョン0.1.3用）
+        const model = genAI.getGenerativeModel({ model: modelInfo.modelName });
+        
+        // 会話履歴を構築
+        const chatHistory = previousMessages.map((msg: Message) => ({
+          role: msg.role === "user" ? "user" : "model",
+          parts: [{ text: msg.content }]
+        }));
+        
+        // チャットセッションを作成
+        const chat = model.startChat({
+          history: chatHistory.slice(0, -1), // 最新のユーザーメッセージを除外
+        });
+        
+        // 最新のユーザーメッセージを送信（バージョン0.1.3用）
+        const result = await chat.sendMessage(content);
+        
+        // 応答を取得
+        aiResponse = result.response.text();
+      } catch (error) {
+        console.error("Error with Google Generative AI:", error);
+        return NextResponse.json(
+          { error: "Google AIの応答生成中にエラーが発生しました。APIキーが正しく設定されているか確認してください。" },
+          { status: 500 }
+        );
+      }
     } else if (modelInfo.provider === "openai") {
       const chatCompletion = await openai.chat.completions.create({
         model: modelInfo.modelName,

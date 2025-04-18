@@ -19,12 +19,14 @@ export default function ChatInterface({
   const [messages, setMessages] = useState<Message[]>(chatSession.messages);
   const [isLoading, setIsLoading] = useState(false);
   const [currentModel, setCurrentModel] = useState<AIModel | undefined>(model);
+  const [error, setError] = useState<string | null>(null);
 
   const sendMessage = async (content: string) => {
     if (!content.trim() || isLoading) return;
 
     try {
       setIsLoading(true);
+      setError(null);
 
       // ユーザーメッセージをUIに追加
       const userMessage: Message = {
@@ -52,7 +54,8 @@ export default function ChatInterface({
       });
 
       if (!response.ok) {
-        throw new Error("メッセージの送信に失敗しました");
+        const errorData = await response.json();
+        throw new Error(errorData.error || "メッセージの送信に失敗しました");
       }
 
       const data = await response.json();
@@ -61,7 +64,9 @@ export default function ChatInterface({
       setMessages(data.messages);
     } catch (error) {
       console.error("Error sending message:", error);
-      // エラー処理
+      setError(error instanceof Error ? error.message : "予期せぬエラーが発生しました");
+      // エラーメッセージを表示
+      setMessages((prev) => prev.filter(msg => msg.id !== `temp-${Date.now()}`));
     } finally {
       setIsLoading(false);
     }
@@ -69,6 +74,7 @@ export default function ChatInterface({
 
   const handleModelChange = async (modelId: string) => {
     try {
+      setError(null);
       // モデル変更をAPIに送信
       const response = await fetch(`/api/chat/${chatSession.id}`, {
         method: "PATCH",
@@ -81,7 +87,8 @@ export default function ChatInterface({
       });
 
       if (!response.ok) {
-        throw new Error("モデルの変更に失敗しました");
+        const errorData = await response.json();
+        throw new Error(errorData.error || "モデルの変更に失敗しました");
       }
 
       // 成功した場合、ローカルの状態を更新
@@ -92,6 +99,7 @@ export default function ChatInterface({
       }));
     } catch (error) {
       console.error("Error changing model:", error);
+      setError(error instanceof Error ? error.message : "予期せぬエラーが発生しました");
     }
   };
 
@@ -104,6 +112,12 @@ export default function ChatInterface({
           onModelChange={handleModelChange}
         />
       </div>
+
+      {error && (
+        <div className="bg-red-100 border border-red-400 text-red-700 px-4 py-3 rounded relative" role="alert">
+          <span className="block sm:inline">{error}</span>
+        </div>
+      )}
 
       <div className="flex-1 overflow-hidden">
         <MessageList messages={messages} isLoading={isLoading} />
