@@ -13,12 +13,60 @@ export type AIModel = {
 
 export const aiModels: AIModel[] = [
   {
+    id: "gemini-1.5-pro",
+    name: "gemini-1.5-pro",
+    description: "GoogleのGemini 1.5 Pro - Googleの最先端のAIモデル",
+    provider: "google",
+    maxTokens: 30000,
+    modelName: "gemini-1.5-pro",
+    tokenCostPer1K: { 
+      input: 0.0005,
+      output: 0.0015,
+    },
+  },
+  {
     id: "gemini-2.0-flash",
     name: "gemini-2.0-flash-001",
     description: "GoogleのGemini 2.0 Flash - Googleの高性能AIモデル",
     provider: "google",
     maxTokens: 30000,
     modelName: "gemini-2.0-flash-001",
+    tokenCostPer1K: {
+      input: 0.0005,
+      output: 0.0015,
+    },
+  },
+  {
+    id:"gemini-2.0-flash-thinking-exp-01-21",
+    name: "gemini-2.0-flash-thinking-exp-01-21",
+    description: "GoogleのGemini 2.0 Flash Thinking Experiment - Googleの最先端のAIモデル",
+    provider: "google",
+    maxTokens: 30000,
+    modelName: "gemini-2.0-flash-thinking-exp-01-21",
+    tokenCostPer1K: {
+      input: 0.0005,
+      output: 0.0015,
+    },
+  },
+  {
+    id: "gemini-2.5-pro-preview-03-25",
+    name: "gemini-2.5-pro-preview-03-25",
+    description: "GoogleのGemini 2.5 Pro Preview - Googleの最先端のAIモデル",
+    provider: "google",
+    maxTokens: 30000,
+    modelName: "gemini-2.5-pro-preview-03-25",
+    tokenCostPer1K: {
+      input: 0.0005,
+      output: 0.0015,
+    },
+  },
+  {
+    id: "gemini-2.5-flash-preview-04-17",
+    name: "gemini-2.5-flash-preview-04-17",
+    description: "GoogleのGemini 2.5 Flash Preview - Googleの最先端のAIモデル",
+    provider: "google",
+    maxTokens: 30000,
+    modelName: "gemini-2.5-flash-preview-04-17",
     tokenCostPer1K: {
       input: 0.0005,
       output: 0.0015,
